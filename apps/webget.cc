@@ -9,8 +9,20 @@ using namespace std;
 
 void get_URL( const string& host, const string& path )
 {
-  cerr << "Function called: get_URL(" << host << ", " << path << ")\n";
-  cerr << "Warning: get_URL() has not been implemented yet.\n";
+  TCPSocket tcpsock{};  //客户端创建套接字
+  Address sev_address("cs144.keithw.org", "http");    //服务器的域名以及提供的服务类型，这里也可以直接使用ip地址和协议名称
+  tcpsock.connect(sev_address);    //连接到服务器
+  string loads = string("GET ") + path + string(" HTTP/1.1\r\nHost: ") + host + string("\r\nConnection: close\r\n\r\n"); //为什么这里不用转换为大端存储方式
+  tcpsock.write(loads);   //发送http请求给服务器
+  tcpsock.shutdown(SHUT_WR);   //关闭端口的写功能，避免服务器处于等待状态
+  string sev_reply;
+  cout << "Get web successfully!" << endl << "Response from server is: " << endl << endl ; 
+  while(!tcpsock.eof()){    //接收来自服务器的响应信息
+    tcpsock.read(sev_reply);
+    cout << sev_reply ; 
+  } 
+  tcpsock.shutdown(SHUT_RD);  //关闭端口的读功能
+  tcpsock.close();   //断开端口连接
 }
 
 int main( int argc, char* argv[] )
