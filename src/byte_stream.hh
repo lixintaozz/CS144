@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include <sstream>
+#include <deque>
 
 class Reader;
 class Writer;
@@ -25,11 +25,11 @@ public:
 protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
   uint64_t capacity_;
-  bool error_{};
+  bool error_;
   bool closed_;         
-  std::stringstream bytestream;  //先不管容量大小，使用ostringstream来做   Todo:stringstream的转换功能
+  std::deque<char> bytestream;  //这里不能使用stringstream，因为它的复制构造函数和复制赋值函数被删除了，这使得ByteStream无法实现复制和赋值操作
   uint64_t avail_capacity_;    
-  uint64_t accumu_bytes_push;
+  uint64_t accumu_bytes_push ;
   uint64_t accumu_bytes_pop;
 };
 
