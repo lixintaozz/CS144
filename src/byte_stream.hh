@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <sstream>
 
 class Reader;
 class Writer;
@@ -13,7 +14,7 @@ public:
   explicit ByteStream( uint64_t capacity );
 
   // Helper functions (provided) to access the ByteStream's Reader and Writer interfaces
-  Reader& reader();
+  Reader& reader();  
   const Reader& reader() const;
   Writer& writer();
   const Writer& writer() const;
@@ -24,7 +25,12 @@ public:
 protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
   uint64_t capacity_;
-  bool error_ {};
+  bool error_{};
+  bool closed_;         
+  std::stringstream bytestream;  //先不管容量大小，使用ostringstream来做   Todo:stringstream的转换功能
+  uint64_t avail_capacity_;    
+  uint64_t accumu_bytes_push;
+  uint64_t accumu_bytes_pop;
 };
 
 class Writer : public ByteStream
