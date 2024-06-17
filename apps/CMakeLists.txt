@@ -9,6 +9,7 @@ macro(add_app exec_name)
   target_link_libraries("${exec_name}" stream_copy)
   target_link_libraries("${exec_name}" minnow_debug)
   target_link_libraries("${exec_name}" util_debug)
+  target_link_libraries("${exec_name}" pthread)
 
   add_executable("${exec_name}_sanitized" "${exec_name}.cc")
   target_compile_options("${exec_name}_sanitized" PUBLIC ${SANITIZING_FLAGS})
