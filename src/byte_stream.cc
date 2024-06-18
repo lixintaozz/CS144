@@ -3,9 +3,9 @@
 
 using namespace std;
 
-//写构造函数
 ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), error_ (false),
-                 closed_(false), bytestream(), avail_capacity_(capacity), accumu_bytes_push(0), accumu_bytes_pop(0){}  //列表初始化需要按照顺序
+                 closed_(false), bytestream(), avail_capacity_(capacity), accumu_bytes_push(0), accumu_bytes_pop(0){}
+
 
 bool Writer::is_closed() const
 {
@@ -36,7 +36,6 @@ void Writer::close()
 
 uint64_t Writer::available_capacity() const
 {
-
   return avail_capacity_;
 }
 
@@ -47,7 +46,7 @@ uint64_t Writer::bytes_pushed() const
 
 bool Reader::is_finished() const
 {
-  if (bytestream.empty() && closed_){
+  if (bytestream.empty() && writer().is_closed()){
     return true;
   }else{
     return false;
@@ -73,11 +72,11 @@ void Reader::pop( uint64_t len )
   }else{
     bytestream.clear();
     accumu_bytes_pop += bytes_buffered();
-    avail_capacity_ += bytes_buffered();    
+    avail_capacity_ += bytes_buffered();
   }
 }
 
 uint64_t Reader::bytes_buffered() const
 {
-  return (capacity_ - avail_capacity_); 
+  return (capacity_ - avail_capacity_);
 }

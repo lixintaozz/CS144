@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <deque>
+#include <stdexcept>
 
 class Reader;
 class Writer;
