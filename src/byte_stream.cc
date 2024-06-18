@@ -1,5 +1,6 @@
 #include "byte_stream.hh"
 
+
 using namespace std;
 
 //写构造函数
@@ -14,11 +15,13 @@ bool Writer::is_closed() const
 void Writer::push( string data )
 {
   if (available_capacity() >= data.size() && !is_closed()){
-    for (auto& ch: data){
-      bytestream.push_back(ch);
-    }
+    bytestream += data;
     avail_capacity_ -= data.size();  
     accumu_bytes_push += data.size();
+  }else{
+    bytestream += data.substr(0, available_capacity());
+    accumu_bytes_push += available_capacity();
+    avail_capacity_ -= available_capacity();  
   }
 }
 
@@ -54,24 +57,19 @@ uint64_t Reader::bytes_popped() const
 
 string_view Reader::peek() const
 {
-  if (!bytestream.empty()){
-    string str;
-    str.reserve(bytestream.size());
-    copy(bytestream.begin(), bytestream.end(), str.begin());
-    return str;
-  }
-  else
-    return {};
+  return bytestream;
 }
 
 void Reader::pop( uint64_t len )
 {
-  if (!bytestream.empty()){
-    for (uint64_t i = 0; i < len; ++ i){
-      bytestream.pop_front();
-    }
+  if (len <= bytes_buffered()){
+    bytestream = bytestream.substr(len);
     accumu_bytes_pop += len;
     avail_capacity_ += len;
+  }else{
+    bytestream.clear();
+    accumu_bytes_pop += bytes_buffered();
+    avail_capacity_ += bytes_buffered();    
   }
 }
 

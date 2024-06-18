@@ -27,8 +27,8 @@ protected:
   uint64_t capacity_;
   bool error_;
   bool closed_;         
-  std::deque<char> bytestream;  //这里不能使用stringstream，因为它的复制构造函数和复制赋值函数被删除了，这使得ByteStream无法实现复制和赋值操作
-  uint64_t avail_capacity_;    
+  std::string bytestream;  //这里不能使用stringstream，因为它的复制构造函数和复制赋值函数被删除了，这使得ByteStream无法实现复制和赋值操作
+  uint64_t avail_capacity_;
   uint64_t accumu_bytes_push ;
   uint64_t accumu_bytes_pop;
 };
