@@ -14,7 +14,11 @@ bool Writer::is_closed() const
 
 void Writer::push( string data )
 {
-  if (available_capacity() >= data.size() && !is_closed()){
+  if (is_closed()){
+    return;
+  }
+
+  if (available_capacity() >= data.size()){
     bytestream += data;
     avail_capacity_ -= data.size();  
     accumu_bytes_push += data.size();
