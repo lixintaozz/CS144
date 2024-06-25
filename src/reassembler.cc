@@ -4,12 +4,12 @@ using namespace std;
 
 void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring )
 {
-  if (reader().bytes_buffered() > first_index){   //出现了重复发送的情况
+  if (writer().bytes_pushed() > first_index){   //出现了重复发送的情况
     return;
   }
 
   if (writer().available_capacity() - buffersize_ >= data.size()){    //bytestream的可用空间足够
-    if (reader().bytes_buffered() == first_index){   //数据按序到达的情况
+    if (writer().bytes_pushed() == first_index){   //数据按序到达的情况
       output_.writer().push(data);
       if (is_last_substring){    //顺序到达的最后一个子串，关闭writer的连接
         setBuffersize();
@@ -21,7 +21,7 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
         if (buffer.empty())   //缓冲区为空，则直接退出循环
           break;
         for (auto& iter: buffer){
-          if (iter.first == reader().bytes_buffered()){    //删除buffer中的满足条件的string
+          if (iter.first == writer().bytes_pushed()){    //删除buffer中的满足条件的string
             output_.writer().push(iter.second);
             buffer.erase(iter.first);
             flag = true;
@@ -43,12 +43,12 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   }else{   //bytestream的可用空间不够
     auto datalen = writer().available_capacity() - buffersize_;
     data = data.substr(0, datalen);
-    if (reader().bytes_buffered() == first_index){   //数据按序到达的情况
+    if (writer().bytes_pushed() == first_index){   //数据按序到达的情况
       output_.writer().push(data);
       bool flag = false;
       while (true){
         for (auto& iter: buffer){
-          if (iter.first == reader().bytes_buffered()){    //删除buffer中的满足条件的string
+          if (iter.first == writer().bytes_pushed()){    //删除buffer中的满足条件的string
             output_.writer().push(iter.second);
             buffer.erase(iter.first);
             flag = true;
