@@ -8,7 +8,7 @@ class Reassembler
 {
 public:
   // Construct Reassembler to write into given ByteStream.
-  explicit Reassembler( ByteStream&& output ) : output_( std::move( output ) ) {}
+  explicit Reassembler( ByteStream&& output ) : output_( std::move( output ) ){}
 
   /*
    * Insert a new substring to be reassembled into a ByteStream.
@@ -44,7 +44,8 @@ public:
 
 private:
   ByteStream output_; // the Reassembler writes to this ByteStream
-  std::unordered_map<uint64_t, std::string> buffer;    //the buffer used to store strings arrived unordered
+  std::unordered_map<uint64_t, std::string> buffer{};    //the buffer used to store strings arrived unordered
   uint64_t buffersize_ = 0;
+  bool is_last = false;
   void setBuffersize();
 };

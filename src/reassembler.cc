@@ -11,8 +11,15 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   if (writer().available_capacity() - buffersize_ >= data.size()){    //bytestream的可用空间足够
     if (reader().bytes_buffered() == first_index){   //数据按序到达的情况
       output_.writer().push(data);
+      if (is_last_substring){    //顺序到达的最后一个子串，关闭writer的连接
+        setBuffersize();
+        output_.writer().close();
+        return;
+      }
       bool flag = false;
       while (true){
+        if (buffer.empty())   //缓冲区为空，则直接退出循环
+          break;
         for (auto& iter: buffer){
           if (iter.first == reader().bytes_buffered()){    //删除buffer中的满足条件的string
             output_.writer().push(iter.second);
@@ -25,9 +32,13 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
           break;
       }
       setBuffersize();   //更新buffersize_的值
+      if (is_last && buffer.empty())
+        output_.writer().close();
     }else{   //数据错序到达的情况
       buffer.insert({first_index, data});
       setBuffersize();   //更新buffersize的值
+      if (is_last_substring)
+        is_last = true;
     }
   }else{   //bytestream的可用空间不够
     auto datalen = writer().available_capacity() - buffersize_;
