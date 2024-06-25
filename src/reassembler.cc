@@ -68,7 +68,7 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 
 uint64_t Reassembler::bytes_pending() const
 {
-  return reader().bytes_buffered() + buffersize_;
+  return buffersize_;
 }
 
 
