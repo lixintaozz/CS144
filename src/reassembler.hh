@@ -1,7 +1,7 @@
 #pragma once
 
 #include "byte_stream.hh"
-#include <unordered_map>
+#include <map>
 #include <string>
 
 class Reassembler
@@ -44,7 +44,7 @@ public:
 
 private:
   ByteStream output_; // the Reassembler writes to this ByteStream
-  std::unordered_map<uint64_t, std::string> buffer{};    //the buffer used to store strings arrived unordered
+  std::map<uint64_t, std::string> buffer{};    //the buffer used to store strings arrived unordered
   uint64_t buffersize_ = 0;
   bool is_last = false;
   void setBuffersize();
