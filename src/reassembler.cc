@@ -97,14 +97,16 @@ uint64_t Reassembler::bytes_pending() const
   uint64_t cur = iter -> second.size() + iter -> first;
   byte_size += iter -> second.size();
   ++ iter;
+
+  //while循环处理整个缓冲区
   while (iter != buffer.end()){
-    if (iter -> first <= cur && (iter -> first + iter -> second.size() -1) >= cur) {
-      cur += ( iter->first + iter->second.size() - cur );
+    if (iter -> first <= cur && (iter -> first + iter -> second.size() -1) >= cur) { //相交
       byte_size += ( iter->first + iter->second.size() - cur );
+      cur += ( iter->first + iter->second.size() - cur );
       ++ iter;
-    }else if (iter -> first <= cur && (iter -> first + iter -> second.size() -1) < cur){
+    }else if (iter -> first <= cur && (iter -> first + iter -> second.size() -1) < cur){  //重合
       ++ iter;
-    }else{
+    }else{ //不相交
       cur = iter -> second.size() + iter -> first;
       byte_size += iter -> second.size();
       ++ iter;
