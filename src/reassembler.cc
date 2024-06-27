@@ -48,62 +48,39 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
         is_last = true;
     }
   }else{  //缓冲区非空的情况
-    if (first_index == writer().bytes_pushed()){    //数据顺序到达
-      auto it = buffer.begin();
-      if ((first_index + data.size() - 1) < it -> first){
-        output_.writer().push(data);
-        auto iter = buffer.begin();
-        while (iter != buffer.end()){ //while循环逐个处理缓冲区内的子串
-          if (iter -> first <= writer().bytes_pushed() &&
-               (iter -> first + iter -> second.size() - 1) >= writer().bytes_pushed()) {  //buffer块相交但不重合的情况，截取后半部分
-            output_.writer().push( iter -> second.substr( writer().bytes_pushed() - iter -> first) );
-            iter = buffer.erase(iter);
-          }else if (iter -> first <= writer().bytes_pushed() &&
-                      (iter -> first + iter -> second.size() - 1) < writer().bytes_pushed()) { // buffer块重合的情况，直接删除被覆盖的buffer块
-            iter = buffer.erase( iter );
-          }else{   //buffer块不相交
-            break;
-          }
-        }
+    //先把字符串直接插入缓冲区
 
-        //判断是否完成所有字符串的读取，如果完成了，则关闭连接
-        if (buffer.empty() && is_last)
-          output_.writer().close();
-
-      }else{
-        output_.writer().push(data.substr(0, (it -> first - first_index)));
-        auto iter = buffer.begin();
-        while (iter != buffer.end()){ //while循环逐个处理缓冲区内的子串
-          if (iter -> first <= writer().bytes_pushed() &&
-               (iter -> first + iter -> second.size() - 1) >= writer().bytes_pushed()) {  //buffer块相交但不重合的情况，截取后半部分
-            output_.writer().push( iter -> second.substr( writer().bytes_pushed() - iter -> first ) );
-            iter = buffer.erase(iter);
-          }else if (iter -> first <= writer().bytes_pushed() &&
-                      (iter -> first + iter -> second.size() - 1) < writer().bytes_pushed()) { // buffer块重合的情况，直接删除被覆盖的buffer块
-            iter = buffer.erase( iter );
-          }else{   //buffer块不相交
-            break;
-          }
-        }
-
-        //判断是否完成所有字符串的读取，如果完成了，则关闭连接
-        if (buffer.empty() && is_last)
-          output_.writer().close();
-      }
-    }else{   //数据错序到达，直接加入缓冲区
-      //相同键的buffer块，只保留大的buffer块；不同键的buffer块，直接插入
-      auto find_iter = buffer.find(first_index);
-      if (find_iter == buffer.end()){
+    //相同键的buffer块，只保留大的buffer块；不同键的buffer块，直接插入
+    auto find_iter = buffer.find(first_index);
+    if (find_iter == buffer.end()){
+      buffer[first_index] = data;
+    }else{
+      if (data.size() > find_iter -> second.size())
         buffer[first_index] = data;
-      }else{
-        if (data.size() > find_iter -> second.size())
-          buffer[first_index] = data;
-      }
-
-      //如果插入的是最后一个块，设置is_last = true
-      if (is_last_substring && complete)
-        is_last = true;
     }
+
+    //如果插入的是最后一个块，设置is_last = true
+    if (is_last_substring && complete)
+      is_last = true;
+
+    //然后再使用while循环统一处理
+    auto iter = buffer.begin();
+    while (iter != buffer.end()){ //while循环逐个处理缓冲区内的子串
+      if (iter -> first <= writer().bytes_pushed() &&
+           (iter -> first + iter -> second.size() - 1) >= writer().bytes_pushed()) {  //buffer块相交但不重合的情况，截取后半部分
+        output_.writer().push( iter -> second.substr( writer().bytes_pushed() - iter -> first ) );
+        iter = buffer.erase(iter);
+      }else if (iter -> first <= writer().bytes_pushed() &&
+                  (iter -> first + iter -> second.size() - 1) < writer().bytes_pushed()) { // buffer块重合的情况，直接删除被覆盖的buffer块
+        iter = buffer.erase( iter );
+      }else{   //buffer块不相交
+        break;
+      }
+    }
+
+    //判断是否完成所有字符串的读取，如果完成了，则关闭连接
+    if (buffer.empty() && is_last)
+      output_.writer().close();
   }
 }
 
