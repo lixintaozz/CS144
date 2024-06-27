@@ -47,21 +47,69 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
         output_.writer().push(data);
       }else{
         output_.writer().push(data.substr(0, (it -> first - first_index)));
-        while (true){ //while循环逐个处理缓冲区内的子串，有重叠则取后半部分，无重叠不用管（或者直接加入bytespending大小）
-
+        auto iter = buffer.begin();
+        while (iter != buffer.end()){ //while循环逐个处理缓冲区内的子串
+          if (iter -> first <= writer().bytes_pushed() &&
+               (iter -> first + iter -> second.size() - 1) >= writer().bytes_pushed()) {  //buffer块相交但不重合的情况，截取后半部分
+            output_.writer().push( iter -> second.substr( writer().bytes_pushed() - first_index ) );
+            iter = buffer.erase(iter);
+          }else if (iter -> first <= writer().bytes_pushed() &&
+                      (iter -> first + iter -> second.size() - 1) < writer().bytes_pushed()) { // buffer块重合的情况，直接删除被覆盖的buffer块
+            iter = buffer.erase( iter );
+          }else{   //buffer块不相交
+            break;
+          }
         }
+
+        //判断是否完成所有字符串的读取，如果完成了，则关闭连接
+        if (buffer.empty() && is_last)
+          output_.writer().close();
       }
-    }  
+    }else{   //数据错序到达，直接加入缓冲区
+      //相同键的buffer块，只保留大的buffer块；不同键的buffer块，直接插入
+      auto find_iter = buffer.find(first_index);
+      if (find_iter == buffer.end()){
+        buffer[first_index] = data;
+      }else{
+        if (data.size() > find_iter -> second.size())
+          buffer[first_index] = data;
+      }
 
+      //如果插入的是最后一个块，设置is_last = true
+      if (is_last_substring)
+        is_last = true;
+    }
   }
-
-
-
 }
+
 
 uint64_t Reassembler::bytes_pending() const
 {
+  //处理缓冲区为空的情况
+  if (buffer.empty())
+    return 0;
 
+  //设置初始条件
+  auto iter = buffer.begin();
+  uint64_t  byte_size = 0;
+  uint64_t cur = iter -> second.size() + iter -> first;
+  byte_size += iter -> second.size();
+  ++ iter;
+  while (iter != buffer.end()){
+    if (iter -> first <= cur && (iter -> first + iter -> second.size() -1) >= cur) {
+      cur += ( iter->first + iter->second.size() - cur );
+      byte_size += ( iter->first + iter->second.size() - cur );
+      ++ iter;
+    }else if (iter -> first <= cur && (iter -> first + iter -> second.size() -1) < cur){
+      ++ iter;
+    }else{
+      cur = iter -> second.size() + iter -> first;
+      byte_size += iter -> second.size();
+      ++ iter;
+    }
+  }
+
+  return byte_size;
 }
 
 
