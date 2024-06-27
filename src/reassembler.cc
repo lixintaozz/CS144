@@ -4,13 +4,17 @@ using namespace std;
 
 void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring ){
   bool complete = true;
-  //先处理字符串为空的情况
+  //先处理字符串为空的情况，字符串为空，为最后一个串，且bytestream内的字符全部读出后才能close
   if (data.empty()){
-    if (is_last_substring)
+    if (is_last_substring && (writer().bytes_pushed() == reader().bytes_popped()))
       output_.writer().close();
     return;
   }
-  
+
+  //如果bytestream没有可用空间直接返回
+  if (writer().available_capacity() == 0)
+    return;
+
   //如果字符串超出bytestream或者重复发送了，不做处理直接返回
   if (first_index + data.size() - 1 < writer().bytes_pushed() || 
   first_index > writer().bytes_pushed() + writer().available_capacity() - 1){
