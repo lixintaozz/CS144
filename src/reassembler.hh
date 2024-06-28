@@ -45,5 +45,5 @@ public:
 private:
   ByteStream output_; // the Reassembler writes to this ByteStream
   std::map<uint64_t, std::string> buffer{};    //the buffer used to store strings arrived unordered
-  bool is_last = false;
+  bool is_last = false;  //the flag indicates whether the data is the last string
 };

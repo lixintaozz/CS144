@@ -4,7 +4,7 @@ using namespace std;
 
 void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring ){
   bool complete = true;
-  //先处理字符串为空的情况，字符串为空，为最后一个串，且bytestream内的字符全部读出后才能close
+  //先处理字符串(data)为空的情况，字符串为空，为最后一个串，且bytestream内的字符全部读出后才能close
   if (data.empty()){
     if (is_last_substring && (writer().bytes_pushed() == reader().bytes_popped()))
       output_.writer().close();
@@ -21,14 +21,14 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     return;
   }
  
- //子串头部有部分重复发送，截取需要处理的数据
+ //字符串头部有部分重复发送，截取需要处理的数据
   if (first_index < writer().bytes_pushed()){
     data = data.substr((writer().bytes_pushed() - first_index));
     first_index = writer().bytes_pushed();
     complete = false;
   } 
 
-  //子串尾部有部分溢出，截取需要处理的数据
+  //字符串尾部有部分溢出，截取需要处理的数据
   if ((data.size() + first_index) > (writer().bytes_pushed() + writer().available_capacity())){
     data = data.substr(0, (writer().bytes_pushed() + writer().available_capacity() - first_index));
     complete = false;
