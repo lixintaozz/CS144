@@ -3,6 +3,7 @@
 
 using namespace std;
 
+//列表初始化方式需要一次初始化全部成员变量（可以初始化为空），并且初始化顺序需要跟声明顺序保持一致
 ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), error_ (false),
                  closed_(false), bytestream(), avail_capacity_(capacity), accumu_bytes_push(0), accumu_bytes_pop(0){}
 
