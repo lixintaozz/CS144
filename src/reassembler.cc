@@ -40,10 +40,10 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   //相同键的buffer块，只保留大的buffer块；不同键的buffer块，直接插入
   auto find_iter = buffer.find(first_index);
   if (find_iter == buffer.end()){
-    buffer[first_index] = data;
+    buffer[first_index] = std::move(data);
   }else{
     if (data.size() > find_iter -> second.size())
-      buffer[first_index] = data;
+      buffer[first_index] = std::move(data);
   }
 
   //如果插入的是最后一个块，设置is_last = true
