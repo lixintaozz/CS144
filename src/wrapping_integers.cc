@@ -2,12 +2,12 @@
 
 using namespace std;
 
-const uint64_t num = 1ULL << 32;
+const uint64_t num = 1UL << 32;
 
 Wrap32 Wrap32::wrap( uint64_t n, Wrap32 zero_point )
 {
   //将64位的绝对序号转换为32位的相对序号
-  return Wrap32((zero_point + n).raw_value_ % num);  //ULL表示unsigned long long
+  return Wrap32(static_cast<uint32_t>((n + zero_point.raw_value_)% num));  
 
 }
 
