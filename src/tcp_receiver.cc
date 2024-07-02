@@ -10,10 +10,15 @@ void TCPReceiver::receive( TCPSenderMessage message )
   if (message.SYN) {
     ISN = message.seqno;
     ISNflag = true;
-  }else{
-      reassembler_.insert(message.seqno.unwrap( ISN, writer().bytes_pushed() ) - 1,
-                           message.payload, message.FIN);
   }
+
+  //如果收到的为开始传送数据之后的FIN报文段，则设置FINflag为true
+  if (message.FIN && ISNflag)
+    FINflag = true;
+
+  //将收到的数据送入reassembler重排序
+  reassembler_.insert(message.seqno.unwrap( ISN, writer().bytes_pushed() ) - 1,
+                           message.payload, message.FIN);
 
   //如果连接出错，则设置出错信息
   if (message.RST)
@@ -29,12 +34,20 @@ TCPReceiverMessage TCPReceiver::send() const
                                  reader().has_error() };
     return message;
   }else{
+    TCPReceiverMessage message;
+    Wrap32 ackno{0};
     if (writer().bytes_pushed() == 0) {
-      TCPReceiverMessage message{ISN + 1, static_cast<uint16_t>(reassembler_.writer().available_capacity()), reader().has_error()};
-      return message;
+      ackno = ISN + 1;
+    }else {
+      ackno = Wrap32::wrap( writer().bytes_pushed() + 1, ISN );
     }
-    optional<Wrap32> ackno = Wrap32::wrap(writer().bytes_pushed() + 1, ISN);
-    TCPReceiverMessage message{ackno, static_cast<uint16_t>(reassembler_.writer().available_capacity()), reader().has_error()};
+
+    //如果报文段的FIN为true
+    if (FINflag){
+      ackno = ackno + 1;
+    }
+
+    message = { ackno, static_cast<uint16_t>( reassembler_.writer().available_capacity() ), reader().has_error() };
     return message;
   }
 }

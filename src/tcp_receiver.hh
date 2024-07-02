@@ -29,4 +29,5 @@ private:
   Reassembler reassembler_;
   Wrap32 ISN{0};
   bool ISNflag{false};
+  bool FINflag{false};
 };
