@@ -29,8 +29,15 @@ TCPReceiverMessage TCPReceiver::send() const
 {
   //发送ackno, window_size
 
+  //计算windowsize的大小
+  uint16_t window_size_;
+  if (reassembler_.writer().available_capacity()  >= UINT16_MAX){
+    window_size_ = UINT16_MAX;
+  }else{
+    window_size_ = reassembler_.writer().available_capacity();
+  }
   if (!ISNflag){
-    TCPReceiverMessage message{nullopt,static_cast<uint16_t>(reassembler_.writer().available_capacity()),
+    TCPReceiverMessage message{nullopt,window_size_,
                                  reader().has_error() };
     return message;
   }else{
@@ -47,7 +54,7 @@ TCPReceiverMessage TCPReceiver::send() const
       ackno = ackno + 1;
     }
 
-    message = { ackno, static_cast<uint16_t>( reassembler_.writer().available_capacity() ), reader().has_error() };
+    message = { ackno, window_size_, reader().has_error() };
     return message;
   }
 }
