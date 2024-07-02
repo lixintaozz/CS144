@@ -9,6 +9,7 @@ void TCPReceiver::receive( TCPSenderMessage message )
   //如果为SYN报文段，记录其序号作为ISN
   if (message.SYN) {
     ISN = message.seqno;
+    ISNflag = true;
   }else{
       reassembler_.insert(message.seqno.unwrap( ISN, writer().bytes_pushed() ) - 1,
                            message.payload, message.FIN);
@@ -22,11 +23,16 @@ void TCPReceiver::receive( TCPSenderMessage message )
 TCPReceiverMessage TCPReceiver::send() const
 {
   //发送ackno, window_size
-  if (reassembler_.writer().bytes_pushed() == 0){
+
+  if (!ISNflag){
     TCPReceiverMessage message{nullopt,static_cast<uint16_t>(reassembler_.writer().available_capacity()),
                                  reader().has_error() };
     return message;
   }else{
+    if (writer().bytes_pushed() == 0) {
+      TCPReceiverMessage message{ISN + 1, static_cast<uint16_t>(reassembler_.writer().available_capacity()), reader().has_error()};
+      return message;
+    }
     optional<Wrap32> ackno = Wrap32::wrap(writer().bytes_pushed() + 1, ISN);
     TCPReceiverMessage message{ackno, static_cast<uint16_t>(reassembler_.writer().available_capacity()), reader().has_error()};
     return message;
