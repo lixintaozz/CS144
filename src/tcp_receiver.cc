@@ -17,8 +17,13 @@ void TCPReceiver::receive( TCPSenderMessage message )
     FINflag = true;
 
   //将收到的数据送入reassembler重排序
-  reassembler_.insert(message.seqno.unwrap( ISN, writer().bytes_pushed() ) - 1,
-                           message.payload, message.FIN);
+  if (message.SYN) {
+    reassembler_.insert( (message.seqno + 1).unwrap( ISN, writer().bytes_pushed() ) - 1,
+                         message.payload, message.FIN );
+  }else{
+    reassembler_.insert( message.seqno.unwrap( ISN, writer().bytes_pushed() ) - 1,
+                         message.payload, message.FIN );
+  }
 
   //如果连接出错，则设置出错信息
   if (message.RST)
