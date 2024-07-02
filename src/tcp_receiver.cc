@@ -36,25 +36,21 @@ TCPReceiverMessage TCPReceiver::send() const
   }else{
     window_size_ = reassembler_.writer().available_capacity();
   }
+
+  //计算ackno的大小并发送返回信息
   if (!ISNflag){
     TCPReceiverMessage message{nullopt,window_size_,
                                  reader().has_error() };
     return message;
   }else{
-    TCPReceiverMessage message;
-    Wrap32 ackno{0};
-    if (writer().bytes_pushed() == 0) {
-      ackno = ISN + 1;
-    }else {
-      ackno = Wrap32::wrap( writer().bytes_pushed() + 1, ISN );
-    }
+    Wrap32 ackno = Wrap32::wrap( writer().bytes_pushed() + 1, ISN );
 
     //如果报文段的FIN为true
     if (FINflag){
       ackno = ackno + 1;
     }
 
-    message = { ackno, window_size_, reader().has_error() };
+    TCPReceiverMessage message = { ackno, window_size_, reader().has_error() };
     return message;
   }
 }
