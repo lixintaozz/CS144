@@ -12,7 +12,7 @@ void TCPReceiver::receive( TCPSenderMessage message )
     ISNflag = true;
   }
 
-  //如果收到的为开始传送数据之后的FIN报文段，则设置FINflag为true
+  //如果收到的为开始传送数据之后的FIN报文段，则设置FINflag为true，表示FIN报文段已经到达但可能还没有被reassemble
   if (message.FIN && ISNflag)
     FINflag = true;
 
