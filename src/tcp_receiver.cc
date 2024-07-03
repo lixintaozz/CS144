@@ -50,8 +50,8 @@ TCPReceiverMessage TCPReceiver::send() const
   }else{
     Wrap32 ackno = Wrap32::wrap( writer().bytes_pushed() + 1, ISN );
 
-    //如果报文段的FIN为true
-    if (FINflag){
+    //如果FIN报文段到达并且已被reassemble
+    if (FINflag && reassembler_.bytes_pending() == 0){
       ackno = ackno + 1;
     }
 
