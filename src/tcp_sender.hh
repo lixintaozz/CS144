@@ -48,4 +48,7 @@ private:
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
+  uint64_t bytes_sent_ = isn_.unwrap(isn_, 0) ;  //sender将要发送的absolute sequence number，初始为isn_
+  uint64_t ack_ = isn_.unwrap(isn_, 0); //receiver返回的期望接收的absolute sequence number，初始为isn_
+  uint64_t consecu_nums_ = 0;  //重新发送的报文段数量
 };

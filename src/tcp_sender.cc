@@ -5,14 +5,14 @@ using namespace std;
 
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
-  // Your code here.
-  return {};
+  //返回没有被确认的sequence number数量
+    return bytes_sent_ - ack_;
 }
 
 uint64_t TCPSender::consecutive_retransmissions() const
 {
-  // Your code here.
-  return {};
+  //返回重新发送的报文段数量
+  return consecu_nums_;
 }
 
 void TCPSender::push( const TransmitFunction& transmit )
