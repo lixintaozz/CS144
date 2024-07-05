@@ -51,4 +51,5 @@ private:
   uint64_t bytes_sent_ = isn_.unwrap(isn_, 0) ;  //sender将要发送的absolute sequence number，初始为isn_
   uint64_t ack_ = isn_.unwrap(isn_, 0); //receiver返回的期望接收的absolute sequence number，初始为isn_
   uint64_t consecu_nums_ = 0;  //重新发送的报文段数量
+  uint16_t window_size_ = 0;   //receiver的windowsize，初始尺寸默认为0
 };
