@@ -50,3 +50,23 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
   (void)transmit;
   (void)initial_RTO_ms_;
 }
+
+bool Timer::alarm( uint64_t time_now ) const
+{
+  return (time_now - initial_time_ >= RTO_time);
+}
+
+void Timer::reset( uint64_t time_now )
+{
+  initial_time_ = time_now;
+}
+
+void Timer::doubleRTO()
+{
+  RTO_time = RTO_time * 2;
+}
+
+void Timer::setRTO(uint64_t rto_time)
+{
+  RTO_time = rto_time;
+}

@@ -11,6 +11,28 @@
 #include <optional>
 #include <queue>
 
+
+
+
+class Timer
+{
+public:
+  static uint64_t  RTO_time; //RTO_time在push SYN报文段之前设置
+
+  bool alarm(uint64_t time_now) const;
+  void reset(uint64_t time_now);
+  void doubleRTO();
+  void setRTO(uint64_t rto_time);
+  Timer(TCPSenderMessage seg, uint64_t initial_time): seg_(seg),initial_time_(initial_time){}
+
+
+private:
+  TCPSenderMessage seg_;
+  uint64_t initial_time_;
+};
+
+
+
 class TCPSender
 {
 public:
@@ -52,4 +74,5 @@ private:
   uint64_t ack_ = isn_.unwrap(isn_, 0); //receiver返回的期望接收的absolute sequence number，初始为isn_
   uint64_t consecu_nums_ = 0;  //重新发送的报文段数量
   uint16_t window_size_ = 0;   //receiver的windowsize，初始尺寸默认为0
+  uint64_t time_ = 0;  //sender已经存活的时间，充当时钟的作用
 };
