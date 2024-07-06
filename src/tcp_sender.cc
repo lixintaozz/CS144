@@ -21,14 +21,29 @@ void TCPSender::push( const TransmitFunction& transmit )
   if (input_.reader().bytes_buffered() == 0)
     return;
 
-  //先处理windowsize为0的情况
-  if (window_size_ == 0){
-    string str;
-    read( input_.reader(), 1, str);
-    TCPSenderMessage message = {Wrap32::wrap(bytes_sent_, isn_), false};
-  }else{
-
+  //如果还没有传送任何数据，那么先发送SYN报文段
+  if (input_.reader().bytes_popped() == 0) {
+    Timer::RTO_time = initial_RTO_ms_; // 设置Timer类的初始RTO值
+    TCPSenderMessage message = { isn_, true, "", false, false };
+    transmit( message );
+    Timer t( message, time_ );
+    seq_buffer_.push( std::move( t ) );
   }
+
+  //开始发送数据报文段
+  string str;
+  if (window_size_ == 0)   //处理windowsize为0的情况
+    read( input_.reader(), window_size_ + 1, str);
+  else if (window_size_ > TCPConfig::MAX_PAYLOAD_SIZE)   //处理windowsize过大的情况
+    read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str);
+  else
+    read( input_.reader(), window_size_, str);
+
+  TCPSenderMessage message = {Wrap32::wrap(bytes_sent_, isn_),
+                               false, str,false,false };
+  transmit(message);
+  Timer t( message, time_ );
+  seq_buffer_.push( std::move( t ) );
 }
 
 TCPSenderMessage TCPSender::make_empty_message() const
@@ -39,13 +54,12 @@ TCPSenderMessage TCPSender::make_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-  // Your code here.
-  (void)msg;
+
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
-  // Your code here.
+  // 重新发送的逻辑由tick来实现
   (void)ms_since_last_tick;
   (void)transmit;
   (void)initial_RTO_ms_;
