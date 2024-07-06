@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <queue>
+#include <deque>
 
 
 
@@ -75,5 +76,5 @@ private:
   uint64_t consecu_nums_ = 0;  //重新发送的报文段数量
   uint16_t window_size_ = 0;   //receiver的windowsize，初始尺寸默认为0
   uint64_t time_ = 0;  //sender已经存活的时间，充当时钟的作用
-  std::queue<Timer> seq_buffer_{};  //用于存储outstanding报文段
+  std::deque<Timer> seq_buffer_{};  //用于存储outstanding报文段
 };

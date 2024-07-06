@@ -22,12 +22,14 @@ void TCPSender::push( const TransmitFunction& transmit )
     return;
 
   //如果还没有传送任何数据，那么先发送SYN报文段
-  if (input_.reader().bytes_popped() == 0) {
+  if (input_.reader().bytes_popped() == 0)
+  {
     Timer::RTO_time = initial_RTO_ms_; // 设置Timer类的初始RTO值
     TCPSenderMessage message = { isn_, true, "", false, false };
     transmit( message );
     Timer t( message, time_ );
-    seq_buffer_.push( std::move( t ) );
+    seq_buffer_.push_back( std::move( t ) );
+    bytes_sent_ += 1;
   }
 
   //开始发送数据报文段
@@ -42,8 +44,20 @@ void TCPSender::push( const TransmitFunction& transmit )
   TCPSenderMessage message = {Wrap32::wrap(bytes_sent_, isn_),
                                false, str,false,false };
   transmit(message);
+  bytes_sent_ += str.size();
   Timer t( message, time_ );
-  seq_buffer_.push( std::move( t ) );
+  seq_buffer_.push_back( std::move( t ) );
+
+  //如果所有数据均已经发送完毕，发送FIN报文段
+  if (input_.reader().is_finished())
+  {
+    TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
+                                  false, "", true, false };
+    transmit( messages );
+    Timer ts( messages, time_ );
+    seq_buffer_.push_back( std::move( ts ) );
+    bytes_sent_ += 1;
+  }
 }
 
 TCPSenderMessage TCPSender::make_empty_message() const
@@ -54,7 +68,10 @@ TCPSenderMessage TCPSender::make_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-
+  //遍历seq_buffer_移出收到ackno的报文段
+  for (auto& item: seq_buffer_)
+  {
+  }
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
