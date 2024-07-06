@@ -68,18 +68,68 @@ TCPSenderMessage TCPSender::make_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
+
+  //设置receiver期望接收的absolute sequence number
+  ack_ = msg.ackno->unwrap(isn_, ack_);
+
+  bool flag = false;   //flag表示receiver是否传来对新的报文段的接收信号
+
   //遍历seq_buffer_移出收到ackno的报文段
-  for (auto& item: seq_buffer_)
+  for (auto iter = seq_buffer_.begin(); iter != seq_buffer_.end(); ++ iter)
   {
+    //当接收端传来新的数据确认
+    if (iter -> seg_.seqno.unwrap(isn_, bytes_sent_)
+           + iter -> seg_.payload.size() <= ack_)
+    {
+      iter = seq_buffer_.erase(iter);
+      flag = true;
+    }else
+    {
+      break;
+    }
+  }
+
+  //如果新收到返回确认信号
+  if (flag)
+  {
+    Timer::RTO_time = initial_RTO_ms_;
+    if (!seq_buffer_.empty())
+    {
+      for (auto& item: seq_buffer_)
+      {
+        item.reset(time_);
+      }
+    }
+    consecu_nums_ = 0;
   }
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
-  // 重新发送的逻辑由tick来实现
-  (void)ms_since_last_tick;
-  (void)transmit;
-  (void)initial_RTO_ms_;
+  //更新sender此刻的时间
+  time_ += ms_since_last_tick;
+  //检查此时是否有报文段需要重传，需要的话重新传送该报文段
+  for (auto& item: seq_buffer_)
+  {
+    if (item.alarm(time_))
+    {
+      transmit(item.seg_);
+      break;
+    }
+  }
+  //更新consecu_nums_和RTO_time的值
+  if (window_size_ != 0)
+  {
+    consecu_nums_ += 1;
+    Timer::RTO_time *= 2;
+  }
+
+  //计时器全部重新倒计时
+  for (auto& item: seq_buffer_)
+  {
+    item.reset(time_);
+  }
+
 }
 
 bool Timer::alarm( uint64_t time_now ) const
@@ -90,14 +140,4 @@ bool Timer::alarm( uint64_t time_now ) const
 void Timer::reset( uint64_t time_now )
 {
   initial_time_ = time_now;
-}
-
-void Timer::doubleRTO()
-{
-  RTO_time = RTO_time * 2;
-}
-
-void Timer::setRTO(uint64_t rto_time)
-{
-  RTO_time = rto_time;
 }
