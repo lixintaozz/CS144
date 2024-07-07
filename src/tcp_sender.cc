@@ -3,6 +3,12 @@
 
 using namespace std;
 
+
+//不能在头文件中定义静态成员变量，而是应该在源文件中进行定义，
+//头文件中只能声明静态成员变量，而不能定义。
+uint64_t Timer::RTO_time;  // 在类定义外定义静态成员变量
+
+
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
   //返回没有被确认的sequence number数量
