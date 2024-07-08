@@ -36,8 +36,8 @@ void TCPSender::push( const TransmitFunction& transmit )
     return;
   }
 
-  //如果所有数据均已经发送完毕，发送FIN报文段
-  if (input_.reader().is_finished())
+  //如果所有数据均已经发送完毕且window还有空间，发送FIN报文段
+  if (input_.reader().is_finished() && window_size_ != 0)
   {
     TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
                                   false, "", true, false };
@@ -52,21 +52,21 @@ void TCPSender::push( const TransmitFunction& transmit )
   //如果input_有数据要发送，那么发送数据报文段
   if (input_.reader().bytes_buffered() != 0) {
     string str;
-    if ( window_size_ == 0 ) // 处理windowsize为0的情况
-      read( input_.reader(), window_size_ + 1, str );
-    else if ( window_size_ > TCPConfig::MAX_PAYLOAD_SIZE ) // 处理windowsize过大的情况
-    {
-      read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
-      window_size_ -= str.size();
-    } else {
-      read( input_.reader(), window_size_, str );
-      window_size_ -= str.size();
+    if ( window_size_ != 0 ) {
+      if ( window_size_ > TCPConfig::MAX_PAYLOAD_SIZE ) // 处理windowsize过大的情况
+      {
+        read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
+        window_size_ -= str.size();
+      } else {
+        read( input_.reader(), window_size_, str );
+        window_size_ -= str.size();
+      }
+      TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, false, false };
+      transmit( message );
+      bytes_sent_ += str.size();
+      Timer t( message, time_ );
+      seq_buffer_.push_back( std::move( t ) );
     }
-    TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, false, false };
-    transmit( message );
-    bytes_sent_ += str.size();
-    Timer t( message, time_ );
-    seq_buffer_.push_back( std::move( t ) );
   }
 }
 
@@ -82,7 +82,15 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
   //设置receiver期望接收的absolute sequence number和receiver的windowsize
   if (msg.ackno.has_value())
     ack_ = msg.ackno->unwrap(isn_, ack_);
-  window_size_ = msg.window_size;
+  if (msg.window_size == 0)
+  {
+    window_size_ = 1;
+    zero_window_ = true;
+  }else
+  {
+    window_size_ = msg.window_size;
+  }
+
 
   bool flag = false;   //flag表示receiver是否传来对新的报文段的接收信号
 
