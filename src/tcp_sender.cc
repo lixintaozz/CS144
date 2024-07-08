@@ -45,10 +45,14 @@ void TCPSender::push( const TransmitFunction& transmit )
   if (window_size_ == 0)   //处理windowsize为0的情况
     read( input_.reader(), window_size_ + 1, str);
   else if (window_size_ > TCPConfig::MAX_PAYLOAD_SIZE)   //处理windowsize过大的情况
-    read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str);
-  else
-    read( input_.reader(), window_size_, str);
-
+  {
+    read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
+    window_size_ -= str.size();
+  }
+  else {
+    read( input_.reader(), window_size_, str );
+    window_size_ -= str.size();
+  }
   TCPSenderMessage message = {Wrap32::wrap(bytes_sent_, isn_),
                                false, str,false,false };
   transmit(message);
