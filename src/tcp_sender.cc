@@ -94,7 +94,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
     for (auto iter = seq_buffer_.begin(); iter != seq_buffer_.end();)
     {
       //当接收端传来新的数据确认
-      if (iter->seg_.sequence_length() <= ack_)
+      if (iter->seg_.sequence_length() + iter -> seg_.seqno.unwrap(isn_, bytes_sent_) <= ack_)
       {
         iter = seq_buffer_.erase(iter);
         flag = true;
