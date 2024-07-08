@@ -23,10 +23,6 @@ uint64_t TCPSender::consecutive_retransmissions() const
 
 void TCPSender::push( const TransmitFunction& transmit )
 {
-  //如果bytestream没有要发送的数据，直接返回
-  if (input_.reader().bytes_buffered() == 0 && syn_)
-    return;
-
   //如果还没有传送SYN报文段，那么先发送SYN报文段
   if (!syn_)
   {
@@ -40,26 +36,6 @@ void TCPSender::push( const TransmitFunction& transmit )
     return;
   }
 
-  //开始发送数据报文段
-  string str;
-  if (window_size_ == 0)   //处理windowsize为0的情况
-    read( input_.reader(), window_size_ + 1, str);
-  else if (window_size_ > TCPConfig::MAX_PAYLOAD_SIZE)   //处理windowsize过大的情况
-  {
-    read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
-    window_size_ -= str.size();
-  }
-  else {
-    read( input_.reader(), window_size_, str );
-    window_size_ -= str.size();
-  }
-  TCPSenderMessage message = {Wrap32::wrap(bytes_sent_, isn_),
-                               false, str,false,false };
-  transmit(message);
-  bytes_sent_ += str.size();
-  Timer t( message, time_ );
-  seq_buffer_.push_back( std::move( t ) );
-
   //如果所有数据均已经发送完毕，发送FIN报文段
   if (input_.reader().is_finished())
   {
@@ -69,6 +45,28 @@ void TCPSender::push( const TransmitFunction& transmit )
     Timer ts( messages, time_ );
     seq_buffer_.push_back( std::move( ts ) );
     bytes_sent_ += 1;
+    return;
+  }
+
+
+  //如果input_有数据要发送，那么发送数据报文段
+  if (input_.reader().bytes_buffered() != 0) {
+    string str;
+    if ( window_size_ == 0 ) // 处理windowsize为0的情况
+      read( input_.reader(), window_size_ + 1, str );
+    else if ( window_size_ > TCPConfig::MAX_PAYLOAD_SIZE ) // 处理windowsize过大的情况
+    {
+      read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
+      window_size_ -= str.size();
+    } else {
+      read( input_.reader(), window_size_, str );
+      window_size_ -= str.size();
+    }
+    TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, false, false };
+    transmit( message );
+    bytes_sent_ += str.size();
+    Timer t( message, time_ );
+    seq_buffer_.push_back( std::move( t ) );
   }
 }
 
