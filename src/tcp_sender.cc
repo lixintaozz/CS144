@@ -125,25 +125,32 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
   //更新sender此刻的时间
   time_ += ms_since_last_tick;
   //检查此时是否有报文段需要重传，需要的话重新传送该报文段
-  for (auto& item: seq_buffer_)
-  {
-    if (item.alarm(time_))
-    {
-      transmit(item.seg_);
-      break;
+  bool flag = false;    //flag表示是否有计时器到时
+  if (!seq_buffer_.empty()) {
+    for ( auto& item : seq_buffer_ ) {
+      if ( item.alarm( time_ ) ) {
+        transmit( item.seg_ );
+        flag = true;
+        break;
+      }
     }
   }
-  //更新consecu_nums_和RTO_time的值
-  if (window_size_ != 0)
-  {
-    consecu_nums_ += 1;
-    Timer::RTO_time *= 2;
-  }
 
-  //计时器全部重新倒计时
-  for (auto& item: seq_buffer_)
+  //如果计时器到时了，更新consecu_nums_和RTO_time的值
+  if (flag)
   {
-    item.reset(time_);
+    //如果window_size_的值不为0，更新Timer::RTO_time的值
+    //if (window_size_ != 0)
+    //{
+    Timer::RTO_time <<= 1;    //这里使用移位操作速度更快
+    consecu_nums_ += 1;
+    //}
+
+    // 计时器全部重新倒计时
+    for ( auto& item : seq_buffer_ )
+    {
+      item.reset( time_ );
+    }
   }
 }
 
