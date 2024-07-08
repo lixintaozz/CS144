@@ -37,7 +37,7 @@ void TCPSender::push( const TransmitFunction& transmit )
   }
 
   //如果所有数据均已经发送完毕且window还有空间，发送FIN报文段
-  if (input_.reader().is_finished() && window_size_ != 0)
+  if (input_.reader().is_finished() && window_size_ != 0 && !fin_)
   {
     TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
                                   false, "", true, false };
@@ -61,7 +61,8 @@ void TCPSender::push( const TransmitFunction& transmit )
         read( input_.reader(), window_size_, str );
         window_size_ -= str.size();
       }
-      TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, false, false };
+      bool is_fin = input_.reader().is_finished() && window_size_ != 0;  //是否需要设置FIN为true
+      TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, is_fin, false };
       transmit( message );
       bytes_sent_ += str.size();
       Timer t( message, time_ );

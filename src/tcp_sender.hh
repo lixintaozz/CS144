@@ -75,4 +75,5 @@ private:
   std::deque<Timer> seq_buffer_{};  //用于存储outstanding报文段
   bool syn_ = false;  //表示SYN报文段是否已经发送，默认为false
   bool zero_window_ = false;  //表示window是否为空
+  bool fin_ = false;  //表示FIN报文段是否已经发送，默认为false
 };
