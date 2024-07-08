@@ -73,4 +73,5 @@ private:
   uint16_t window_size_ = 0;   //receiver的windowsize，初始尺寸默认为0
   uint64_t time_ = 0;  //sender已经存活的时间，充当时钟的作用
   std::deque<Timer> seq_buffer_{};  //用于存储outstanding报文段
+  bool syn_ = false;  //表示SYN报文段是否已经发送，默认为false
 };

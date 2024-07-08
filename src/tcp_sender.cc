@@ -24,11 +24,11 @@ uint64_t TCPSender::consecutive_retransmissions() const
 void TCPSender::push( const TransmitFunction& transmit )
 {
   //如果bytestream没有要发送的数据，直接返回
-  if (input_.reader().bytes_buffered() == 0)
+  if (input_.reader().bytes_buffered() == 0 && syn_)
     return;
 
-  //如果还没有传送任何数据，那么先发送SYN报文段
-  if (input_.reader().bytes_popped() == 0)
+  //如果还没有传送SYN报文段，那么先发送SYN报文段
+  if (!syn_)
   {
     Timer::RTO_time = initial_RTO_ms_; // 设置Timer类的初始RTO值
     TCPSenderMessage message = { isn_, true, "", false, false };
@@ -36,6 +36,8 @@ void TCPSender::push( const TransmitFunction& transmit )
     Timer t( message, time_ );
     seq_buffer_.push_back( std::move( t ) );
     bytes_sent_ += 1;
+    syn_ = true;
+    return;
   }
 
   //开始发送数据报文段
@@ -69,29 +71,33 @@ void TCPSender::push( const TransmitFunction& transmit )
 TCPSenderMessage TCPSender::make_empty_message() const
 {
   //返回仅包含序列号的TCPSenderMessage，它不占用sequence number
-  return {Wrap32::wrap(bytes_sent_ - 1, isn_), false, "", false, false};
+  return {Wrap32::wrap(bytes_sent_, isn_), false, "", false, false};
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
 
-  //设置receiver期望接收的absolute sequence number
-  ack_ = msg.ackno->unwrap(isn_, ack_);
+  //设置receiver期望接收的absolute sequence number和receiver的windowsize
+  if (msg.ackno.has_value())
+    ack_ = msg.ackno->unwrap(isn_, ack_);
+  window_size_ = msg.window_size;
 
   bool flag = false;   //flag表示receiver是否传来对新的报文段的接收信号
 
   //遍历seq_buffer_移出收到ackno的报文段
-  for (auto iter = seq_buffer_.begin(); iter != seq_buffer_.end(); ++ iter)
+  if (!seq_buffer_.empty())
   {
-    //当接收端传来新的数据确认
-    if (iter -> seg_.seqno.unwrap(isn_, bytes_sent_)
-           + iter -> seg_.payload.size() <= ack_)
+    for (auto iter = seq_buffer_.begin(); iter != seq_buffer_.end();)
     {
-      iter = seq_buffer_.erase(iter);
-      flag = true;
-    }else
-    {
-      break;
+      //当接收端传来新的数据确认
+      if (iter->seg_.sequence_length() <= ack_)
+      {
+        iter = seq_buffer_.erase(iter);
+        flag = true;
+      }else
+      {
+        break;
+      }
     }
   }
 
@@ -135,7 +141,6 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
   {
     item.reset(time_);
   }
-
 }
 
 bool Timer::alarm( uint64_t time_now ) const
