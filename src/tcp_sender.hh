@@ -76,7 +76,7 @@ private:
   uint64_t time_ = 0;  //sender已经存活的时间，充当时钟的作用
   std::deque<Timer> seq_buffer_{};  //用于存储outstanding报文段
   bool syn_ = false;  //表示SYN报文段是否已经发送，默认为false
-  bool zero_window_ = false;  //表示window是否为空
+  bool zero_window_ = false;  //表示window是否为空，默认为false
   bool fin_ = false;  //表示FIN报文段是否已经发送，默认为false
   bool receive_first_ = false; //表示是否在SYN报文段发送之前就收到了msg,默认为false
 };

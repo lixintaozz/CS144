@@ -23,21 +23,12 @@ uint64_t TCPSender::consecutive_retransmissions() const
 
 void TCPSender::push( const TransmitFunction& transmit )
 {
-  //如果还没有传送SYN报文段，那么先发送SYN报文段
+  //如果还没有传送SYN报文段，那么先发送SYN报文段（不带payload的SYN报文段）
   if (!syn_ && !receive_first_)
   {
     Timer::RTO_time = initial_RTO_ms_; // 设置Timer类的初始RTO值
-    //如果FIN报文段还没有发送，并且现在需要发送FIN设置为true的FIN报文段
     TCPSenderMessage message;
-    if (!fin_) {
-      bool is_fin = input_.reader().is_finished() && window_size_ != 0;
-      message = { isn_, true, "", is_fin, input_.has_error() };
-      if (is_fin)
-      {
-        bytes_sent_ += 1;
-        fin_ = true;
-      }
-    }
+    message = { isn_, true, "", false, input_.has_error() };
     transmit( message );
     Timer t( message, time_ );
     seq_buffer_.push_back( std::move( t ) );
@@ -48,6 +39,7 @@ void TCPSender::push( const TransmitFunction& transmit )
 
   //如果所有数据均已经发送完毕且window还有空间，发送FIN报文段
   //仅当window_size_能够放下还没有被确认的数据时，我们才考虑发送FIN报文段
+  //也能处理SYN和FIN同时为true且没有payload的报文段（特殊情况）
   if (input_.reader().is_finished() && window_size_ != 0 && !fin_ && window_size_ > sequence_numbers_in_flight())
   {
     TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
