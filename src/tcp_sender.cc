@@ -27,7 +27,17 @@ void TCPSender::push( const TransmitFunction& transmit )
   if (!syn_)
   {
     Timer::RTO_time = initial_RTO_ms_; // 设置Timer类的初始RTO值
-    TCPSenderMessage message = { isn_, true, "", false, input_.has_error() };
+    //如果FIN报文段还没有发送，并且现在需要发送FIN设置为true的FIN报文段
+    TCPSenderMessage message;
+    if (!fin_) {
+      bool is_fin = input_.reader().is_finished() && window_size_ != 0;
+      message = { isn_, true, "", is_fin, input_.has_error() };
+      if (is_fin)
+      {
+        bytes_sent_ += 1;
+        fin_ = true;
+      }
+    }
     transmit( message );
     Timer t( message, time_ );
     seq_buffer_.push_back( std::move( t ) );
@@ -45,6 +55,7 @@ void TCPSender::push( const TransmitFunction& transmit )
     Timer ts( messages, time_ );
     seq_buffer_.push_back( std::move( ts ) );
     bytes_sent_ += 1;
+    fin_ = true;
     return;
   }
 
@@ -66,7 +77,10 @@ void TCPSender::push( const TransmitFunction& transmit )
       transmit( message );
       bytes_sent_ += str.size();
       if (is_fin)
+      {
         bytes_sent_ += 1;
+        fin_ = true;
+      }
       Timer t( message, time_ );
       seq_buffer_.push_back( std::move( t ) );
     }
