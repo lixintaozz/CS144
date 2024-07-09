@@ -51,7 +51,7 @@ void TCPSender::push( const TransmitFunction& transmit )
   if (input_.reader().is_finished() && window_size_ != 0 && !fin_ && window_size_ > sequence_numbers_in_flight())
   {
     TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
-                                  false, "", true, input_.has_error() };
+                                  !syn_, "", true, input_.has_error() };
     transmit( messages );
     bool zero_seg = (window_size_ == 1 && zero_window_);  //该报文段是否为"零"报文段
     if (zero_seg)
@@ -60,6 +60,13 @@ void TCPSender::push( const TransmitFunction& transmit )
     seq_buffer_.push_back( std::move( ts ) );
     bytes_sent_ += 1;
     fin_ = true;
+
+    //处理发送SYN+FIN为true且payload_len为0的报文段
+    if (!syn_)
+    {
+      syn_ = true;
+      bytes_sent_ += 1;
+    }
     return;
   }
 
@@ -110,8 +117,8 @@ TCPSenderMessage TCPSender::make_empty_message() const
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
   //如果SYN报文段发送之前就收到了msg，设置receive_first_为true
-  if (!syn_ && msg.ackno.has_value())
-    receive_first_ =true;
+  if (!syn_)
+    receive_first_ = true;
 
   //设置receiver期望接收的absolute sequence number和receiver的windowsize
   if (msg.ackno.has_value()) {
