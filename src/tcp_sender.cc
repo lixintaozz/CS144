@@ -81,8 +81,11 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 {
 
   //设置receiver期望接收的absolute sequence number和receiver的windowsize
-  if (msg.ackno.has_value())
-    ack_ = msg.ackno->unwrap(isn_, ack_);
+  if (msg.ackno.has_value()) {
+    if (msg.ackno->unwrap( isn_, ack_ ) > bytes_sent_)   //如果返回的ack大于bytes_sent_，直接丢弃该msg
+      return;
+    ack_ = msg.ackno->unwrap( isn_, ack_ );
+  }
   if (msg.window_size == 0)
   {
     window_size_ = 1;
