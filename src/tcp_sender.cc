@@ -60,30 +60,28 @@ void TCPSender::push( const TransmitFunction& transmit )
   }
 
 
-  //如果input_有数据要发送，那么发送数据报文段
-  if (input_.reader().bytes_buffered() != 0) {
+  //如果input_有数据要发送且window还有空间，那么发送数据报文段
+  while (input_.reader().bytes_buffered() != 0 && window_size_ != 0) {
     string str;
-    if ( window_size_ != 0 ) {
-      if ( window_size_ > TCPConfig::MAX_PAYLOAD_SIZE ) // 处理windowsize过大的情况
-      {
-        read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
-        window_size_ -= str.size();
-      } else {
-        read( input_.reader(), window_size_, str );
-        window_size_ -= str.size();
-      }
-      bool is_fin = input_.reader().is_finished() && window_size_ != 0;  //是否需要设置FIN为true
-      TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, is_fin, input_.has_error() };
-      transmit( message );
-      bytes_sent_ += str.size();
-      if (is_fin)
-      {
-        bytes_sent_ += 1;
-        fin_ = true;
-      }
-      Timer t( message, time_ );
-      seq_buffer_.push_back( std::move( t ) );
+    if ( window_size_ > TCPConfig::MAX_PAYLOAD_SIZE ) // 处理windowsize过大的情况
+    {
+      read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
+      window_size_ -= str.size();
+    } else {
+      read( input_.reader(), window_size_, str );
+      window_size_ -= str.size();
     }
+    bool is_fin = input_.reader().is_finished() && window_size_ != 0;  //是否需要设置FIN为true
+    TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, is_fin, input_.has_error() };
+    transmit( message );
+    bytes_sent_ += str.size();
+    if (is_fin)
+    {
+      bytes_sent_ += 1;
+      fin_ = true;
+    }
+    Timer t( message, time_ );
+    seq_buffer_.push_back( std::move( t ) );
   }
 }
 
