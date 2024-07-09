@@ -105,10 +105,15 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
   if (msg.ackno.has_value()) {
     if (msg.ackno->unwrap( isn_, ack_ ) > bytes_sent_)   //如果返回的ack大于bytes_sent_，直接丢弃该msg
       return;
-    ack_ = msg.ackno->unwrap( isn_, ack_ );
+    if (msg.ackno->unwrap( isn_, ack_ ) > ack_)  //只有当收到的ackno比之前收到的ackno大时，才更新ack_的值
+      ack_ = msg.ackno->unwrap( isn_, ack_ );
   }
 
+  //如果msg的RST为true，那么设置input_的error位
+  if (msg.RST)
+    input_.set_error();
 
+  //更新window_size_的值
   if ( msg.window_size == 0 ) {
     window_size_ = 1;
     zero_window_ = true;
