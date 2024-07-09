@@ -47,7 +47,8 @@ void TCPSender::push( const TransmitFunction& transmit )
   }
 
   //如果所有数据均已经发送完毕且window还有空间，发送FIN报文段
-  if (input_.reader().is_finished() && window_size_ != 0 && !fin_)
+  //仅当window_size_能够放下还没有被确认的数据时，我们才考虑发送FIN报文段
+  if (input_.reader().is_finished() && window_size_ != 0 && !fin_ && window_size_ > sequence_numbers_in_flight())
   {
     TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
                                   false, "", true, input_.has_error() };
@@ -100,12 +101,12 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
       return;
     ack_ = msg.ackno->unwrap( isn_, ack_ );
   }
-  if (msg.window_size == 0)
-  {
+
+
+  if ( msg.window_size == 0 ) {
     window_size_ = 1;
     zero_window_ = true;
-  }else
-  {
+  } else {
     window_size_ = msg.window_size;
   }
 
