@@ -27,7 +27,7 @@ void TCPSender::push( const TransmitFunction& transmit )
   if (!syn_)
   {
     Timer::RTO_time = initial_RTO_ms_; // 设置Timer类的初始RTO值
-    TCPSenderMessage message = { isn_, true, "", false, false };
+    TCPSenderMessage message = { isn_, true, "", false, input_.has_error() };
     transmit( message );
     Timer t( message, time_ );
     seq_buffer_.push_back( std::move( t ) );
@@ -40,7 +40,7 @@ void TCPSender::push( const TransmitFunction& transmit )
   if (input_.reader().is_finished() && window_size_ != 0 && !fin_)
   {
     TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
-                                  false, "", true, false };
+                                  false, "", true, input_.has_error() };
     transmit( messages );
     Timer ts( messages, time_ );
     seq_buffer_.push_back( std::move( ts ) );
@@ -62,9 +62,11 @@ void TCPSender::push( const TransmitFunction& transmit )
         window_size_ -= str.size();
       }
       bool is_fin = input_.reader().is_finished() && window_size_ != 0;  //是否需要设置FIN为true
-      TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, is_fin, false };
+      TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, is_fin, input_.has_error() };
       transmit( message );
       bytes_sent_ += str.size();
+      if (is_fin)
+        bytes_sent_ += 1;
       Timer t( message, time_ );
       seq_buffer_.push_back( std::move( t ) );
     }
@@ -74,7 +76,7 @@ void TCPSender::push( const TransmitFunction& transmit )
 TCPSenderMessage TCPSender::make_empty_message() const
 {
   //返回仅包含序列号的TCPSenderMessage，它不占用sequence number
-  return {Wrap32::wrap(bytes_sent_, isn_), false, "", false, false};
+  return {Wrap32::wrap(bytes_sent_, isn_), false, "", false, input_.has_error()};
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
