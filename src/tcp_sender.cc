@@ -24,7 +24,7 @@ uint64_t TCPSender::consecutive_retransmissions() const
 void TCPSender::push( const TransmitFunction& transmit )
 {
   //如果还没有传送SYN报文段，那么先发送SYN报文段
-  if (!syn_)
+  if (!syn_ && !receive_first_)
   {
     Timer::RTO_time = initial_RTO_ms_; // 设置Timer类的初始RTO值
     //如果FIN报文段还没有发送，并且现在需要发送FIN设置为true的FIN报文段
@@ -66,6 +66,10 @@ void TCPSender::push( const TransmitFunction& transmit )
 
   //如果input_有数据要发送且window还有空间，那么发送数据报文段
   while (input_.reader().bytes_buffered() != 0 && window_size_ != 0) {
+    //如果SYN报文段还没发送，那么就发送带数据的SYN报文段
+    if (!syn_)
+      window_size_ -= 1;
+
     string str;
     bool zero_seg = (window_size_ == 1 && zero_window_);  //该报文段是否为"零"报文段
     if ( window_size_ > TCPConfig::MAX_PAYLOAD_SIZE ) // 处理windowsize过大的情况
@@ -79,8 +83,13 @@ void TCPSender::push( const TransmitFunction& transmit )
       window_size_ -= str.size();
     }
     bool is_fin = input_.reader().is_finished() && window_size_ != 0;  //是否需要设置FIN为true
-    TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), false, str, is_fin, input_.has_error() };
+    TCPSenderMessage message = { Wrap32::wrap( bytes_sent_, isn_ ), !syn_, str, is_fin, input_.has_error() };
     transmit( message );
+    if (!syn_)
+    {
+      bytes_sent_ += 1;
+      syn_ = true;
+    }
     bytes_sent_ += str.size();
     if (is_fin)
     {
@@ -100,6 +109,9 @@ TCPSenderMessage TCPSender::make_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
+  //如果SYN报文段发送之前就收到了msg，设置receive_first_为true
+  if (!syn_ && msg.ackno.has_value())
+    receive_first_ =true;
 
   //设置receiver期望接收的absolute sequence number和receiver的windowsize
   if (msg.ackno.has_value()) {
