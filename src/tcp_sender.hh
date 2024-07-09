@@ -20,10 +20,12 @@ class Timer
 public:
   static uint64_t  RTO_time; //RTO_time在push SYN报文段之前设置
   TCPSenderMessage seg_;
+  bool is_zero_; //表示该报文段是否为"零"报文段
 
   bool alarm(uint64_t time_now) const;
   void reset(uint64_t time_now);
-  Timer(TCPSenderMessage seg, uint64_t initial_time): seg_(std::move(seg)),initial_time_(initial_time){}
+  Timer(TCPSenderMessage seg, uint64_t initial_time, bool is_zero = false): seg_(std::move(seg)),
+    is_zero_(is_zero),  initial_time_(initial_time){}
 
 private:
   uint64_t initial_time_;

@@ -53,7 +53,10 @@ void TCPSender::push( const TransmitFunction& transmit )
     TCPSenderMessage messages = { Wrap32::wrap(bytes_sent_, isn_),
                                   false, "", true, input_.has_error() };
     transmit( messages );
-    Timer ts( messages, time_ );
+    bool zero_seg = (window_size_ == 1 && zero_window_);  //该报文段是否为"零"报文段
+    if (zero_seg)
+      zero_window_ = false;
+    Timer ts( messages, time_, zero_seg );
     seq_buffer_.push_back( std::move( ts ) );
     bytes_sent_ += 1;
     fin_ = true;
@@ -64,11 +67,14 @@ void TCPSender::push( const TransmitFunction& transmit )
   //如果input_有数据要发送且window还有空间，那么发送数据报文段
   while (input_.reader().bytes_buffered() != 0 && window_size_ != 0) {
     string str;
+    bool zero_seg = (window_size_ == 1 && zero_window_);  //该报文段是否为"零"报文段
     if ( window_size_ > TCPConfig::MAX_PAYLOAD_SIZE ) // 处理windowsize过大的情况
     {
       read( input_.reader(), TCPConfig::MAX_PAYLOAD_SIZE, str );
       window_size_ -= str.size();
     } else {
+      if (zero_seg)
+        zero_window_ = false;
       read( input_.reader(), window_size_, str );
       window_size_ -= str.size();
     }
@@ -81,7 +87,7 @@ void TCPSender::push( const TransmitFunction& transmit )
       bytes_sent_ += 1;
       fin_ = true;
     }
-    Timer t( message, time_ );
+    Timer t( message, time_, zero_seg );
     seq_buffer_.push_back( std::move( t ) );
   }
 }
@@ -151,10 +157,13 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
   time_ += ms_since_last_tick;
   //检查此时是否有报文段需要重传，需要的话重新传送该报文段
   bool flag = false;    //flag表示是否有计时器到时
+  bool zero_seg = false;   //zero_seg表示重传的是不是"零"报文段
   if (!seq_buffer_.empty()) {
     for ( auto& item : seq_buffer_ ) {
       if ( item.alarm( time_ ) ) {
         transmit( item.seg_ );
+        if (item.is_zero_)
+          zero_seg = true;
         flag = true;
         break;
       }
@@ -164,12 +173,9 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
   //如果计时器到时了，更新consecu_nums_和RTO_time的值
   if (flag)
   {
-    //如果window_size_的值不为0，更新Timer::RTO_time的值
-    //if (window_size_ != 0)
-    //{
-    Timer::RTO_time <<= 1;    //这里使用移位操作速度更快
+    if (!zero_seg)
+      Timer::RTO_time <<= 1;    //这里使用移位操作速度更快
     consecu_nums_ += 1;
-    //}
 
     // 计时器全部重新倒计时
     for ( auto& item : seq_buffer_ )
