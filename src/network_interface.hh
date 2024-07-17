@@ -1,10 +1,24 @@
 #pragma once
 
 #include <queue>
+#include <unordered_map>
 
 #include "address.hh"
 #include "ethernet_frame.hh"
 #include "ipv4_datagram.hh"
+
+
+//用于存储待发送的IP数据报的结构
+struct ip_wait{
+  size_t init_time{};
+  std::queue<InternetDatagram> ip_queue{};
+};
+
+//用于存储IP-ETHERNET地址映射表的结构
+struct ip_ethernet_map{
+  EthernetAddress ethernet_address{};
+  size_t init_time{};
+};
 
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
@@ -81,4 +95,29 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
+
+  std::unordered_map<uint32_t, ip_wait> ip_to_send_{};   //用于存储等待ARP响应报文的IP数据报
+  std::unordered_map<uint32_t ,ip_ethernet_map> ip_ethernet_map_{};  //用于存储IP-ETHERNET地址映射表
+  size_t time_ = 0;  //用于记录时间
+
+  template<class T1>
+  void serialize( const T1& datagram, std::vector<std::string>& payload )
+  {
+    //用于将数据报转换为以太帧的payload格式
+    Serializer serializer;
+    datagram.serialize(serializer);
+    payload = serializer.output();
+  }
+
+  template<class T2>
+  void parse( T2& datagram, std::vector<std::string>& payload )
+  {
+    //用于从以太帧的payload格式恢复为数据报
+    Parser parser{payload};
+    datagram.parse(parser);
+  }
+
+  //用于发送ARP请求报文或者ARP相应报文
+  void send_arp_(bool is_request, uint32_t ip_required,
+                  uint32_t ip_response, EthernetAddress ethernet_response);
 };
