@@ -32,8 +32,7 @@ void get_URL( const string& host, const string& path )
   while(!tcpsock.eof()){
     tcpsock.read(sev_reply);
     cout << sev_reply ; 
-  } 
-  tcpsock.shutdown(SHUT_RD);  //关闭端口的读功能
+  }
   tcpsock.close();   //断开端口连接
 }
 
