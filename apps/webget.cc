@@ -4,13 +4,13 @@
 #include <iostream>
 #include <span>
 #include <string>
-#include "tcp_minnow_socket.hh"
+//#include "tcp_minnow_socket.hh"
 
 using namespace std;
 
 void get_URL( const string& host, const string& path )
 {
-  CS144TCPSocket tcpsock{};  //客户端创建套接字对象
+  TCPSocket tcpsock{};  //客户端创建套接字对象
 
   //使用服务器的域名以及提供的服务类型构建Address对象，这里也可以直接使用ip地址和协议名称
   Address sev_address("cs144.keithw.org", "http");
