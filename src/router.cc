@@ -36,36 +36,41 @@ void Router::route()
     auto& queue_temp = pointer -> datagrams_received();
     while (!queue_temp.empty())
     {
+      //将IP数据报的TTL减一
+      if (queue_temp.front().header.ttl > 0)
+        -- queue_temp.front().header.ttl;
+
       //如果IP数据报过期，直接丢弃
-      if (queue_temp.front().header.ttl == 0 || queue_temp.front().header.ttl == 1) {
+      if (queue_temp.front().header.ttl == 0) {
         queue_temp.pop();
         continue;
       }
 
       //遍历路由器转发表，寻找转发接口
-      bool find = false;
+      auto it = router_map_.end();   //用于存储最长前缀的迭代器
       if (!router_map_.empty()) {
         for ( auto iter = router_map_.begin(); iter != router_map_.end(); ++ iter )
         {
-          if ( match( queue_temp.front().header.dst, iter-> first, iter->second.prefix_length ) ) {
-            find = true;
-            // 如果下一跳是路由器，就使用转发表存储的下一跳地址；否则使用IP数据报的目的IP地址
-            if ( iter->second.next_hop.has_value() )
-              interface( iter->second.interface_num )
-                ->send_datagram( queue_temp.front(), iter->second.next_hop.value() );
-            else
-              interface( iter->second.interface_num )
-                ->send_datagram( queue_temp.front(),
-                                 Address::from_ipv4_numeric( queue_temp.front().header.dst ) );
-
-            queue_temp.pop();
-            break;
+          if ( match( queue_temp.front().header.dst,
+                      iter-> first, iter->second.prefix_length ) ) {
+            if (it == router_map_.end() ||
+                 iter -> second.prefix_length > it -> second.prefix_length)
+              it = iter;
           }
         }
       }
-      // 如果没有找到合适的路由转发表项，就扔弃该IP数据报
-      if ( !find )
-        queue_temp.pop();
+
+      if (it != router_map_.end()) {
+        // 如果下一跳是路由器，就使用转发表存储的下一跳地址；否则使用IP数据报的目的IP地址
+        if ( it->second.next_hop.has_value() )
+          interface( it->second.interface_num )
+            ->send_datagram( queue_temp.front(), it->second.next_hop.value() );
+        else
+          interface( it->second.interface_num )
+            ->send_datagram( queue_temp.front(), Address::from_ipv4_numeric( queue_temp.front().header.dst ) );
+      }
+      //将IP数据报出队
+      queue_temp.pop();
     }
   }
 }
