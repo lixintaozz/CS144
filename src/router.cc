@@ -21,9 +21,9 @@ void Router::add_route( const uint32_t route_prefix,
        << " on interface " << interface_num << "\n";
 
   //该函数将路由表项添加到路由表中
-  router_map_[prefix_length].route_prefix = route_prefix;
-  router_map_[prefix_length].next_hop = next_hop;
-  router_map_[prefix_length].interface_num = interface_num;
+  router_map_[route_prefix].prefix_length = prefix_length;
+  router_map_[route_prefix].next_hop = next_hop;
+  router_map_[route_prefix].interface_num = interface_num;
 }
 
 // Go through all the interfaces, and route every incoming datagram to its proper outgoing interface.
@@ -45,9 +45,9 @@ void Router::route()
       //遍历路由器转发表，寻找转发接口
       bool find = false;
       if (!router_map_.empty()) {
-        for ( auto iter = router_map_.rbegin(); iter != router_map_.rend(); ++iter )
+        for ( auto iter = router_map_.begin(); iter != router_map_.end(); ++ iter )
         {
-          if ( match( queue_temp.front().header.dst, iter->second.route_prefix, iter->first ) ) {
+          if ( match( queue_temp.front().header.dst, iter-> first, iter->second.prefix_length ) ) {
             find = true;
             // 如果下一跳是路由器，就使用转发表存储的下一跳地址；否则使用IP数据报的目的IP地址
             if ( iter->second.next_hop.has_value() )
@@ -62,11 +62,10 @@ void Router::route()
             break;
           }
         }
-
-        // 如果没有找到合适的路由转发表项，就扔弃该IP数据报
-        if ( !find )
-          queue_temp.pop();
       }
+      // 如果没有找到合适的路由转发表项，就扔弃该IP数据报
+      if ( !find )
+        queue_temp.pop();
     }
   }
 }
