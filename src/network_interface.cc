@@ -52,7 +52,7 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 void NetworkInterface::recv_frame( const EthernetFrame& frame )
 {
   //如果收到的帧既不是广播帧也不是发往该接口的帧，直接返回
-  if (frame.header.dst != ETHERNET_BROADCAST || frame.header.dst != ethernet_address_)
+  if (frame.header.dst != ETHERNET_BROADCAST && frame.header.dst != ethernet_address_)
     return;
 
   if (frame.header.type == EthernetHeader::TYPE_IPv4)   //如果收到的是IP数据报
@@ -70,7 +70,7 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
     if (arpMessage.opcode == ARPMessage::OPCODE_REQUEST
          && arpMessage.target_ip_address == ip_address_.ipv4_numeric())   //如果收到的是ARP请求数据报
     {
-      send_arp_( false, 0, ip_address_.ipv4_numeric(),ethernet_address_);
+      send_arp_( false, 0, arpMessage.sender_ip_address,arpMessage.sender_ethernet_address);
     }else
     {
       //将等待该响应报文的IP数据报全部发送出去
@@ -78,6 +78,7 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
       while (!send_queue.empty())
       {
         send_datagram(send_queue.front(), Address::from_ipv4_numeric(arpMessage.sender_ip_address));
+        send_queue.pop();
       }
       ip_to_send_.erase(arpMessage.sender_ip_address);
     }
