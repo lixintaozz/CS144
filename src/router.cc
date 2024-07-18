@@ -20,11 +20,62 @@ void Router::add_route( const uint32_t route_prefix,
        << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
        << " on interface " << interface_num << "\n";
 
-  // Your code here.
+  //该函数将路由表项添加到路由表中
+  router_map_[prefix_length].route_prefix = route_prefix;
+  router_map_[prefix_length].next_hop = next_hop;
+  router_map_[prefix_length].interface_num = interface_num;
 }
 
 // Go through all the interfaces, and route every incoming datagram to its proper outgoing interface.
 void Router::route()
 {
-  // Your code here.
+  //该函数将收到的IP数据报转发到对应的网络
+  //遍历router的每个interface，依次处理收到的IP数据报
+  for (auto& pointer:_interfaces)
+  {
+    auto& queue_temp = pointer -> datagrams_received();
+    while (!queue_temp.empty())
+    {
+      //如果IP数据报过期，直接丢弃
+      if (queue_temp.front().header.ttl == 0 || queue_temp.front().header.ttl == 1) {
+        queue_temp.pop();
+        continue;
+      }
+
+      //遍历路由器转发表，寻找转发接口
+      bool find = false;
+      if (!router_map_.empty()) {
+        for ( auto iter = router_map_.rbegin(); iter != router_map_.rend(); ++iter )
+        {
+          if ( match( queue_temp.front().header.dst, iter->second.route_prefix, iter->first ) ) {
+            find = true;
+            // 如果下一跳是路由器，就使用转发表存储的下一跳地址；否则使用IP数据报的目的IP地址
+            if ( iter->second.next_hop.has_value() )
+              interface( iter->second.interface_num )
+                ->send_datagram( queue_temp.front(), iter->second.next_hop.value() );
+            else
+              interface( iter->second.interface_num )
+                ->send_datagram( queue_temp.front(),
+                                 Address::from_ipv4_numeric( queue_temp.front().header.dst ) );
+
+            queue_temp.pop();
+            break;
+          }
+        }
+
+        // 如果没有找到合适的路由转发表项，就扔弃该IP数据报
+        if ( !find )
+          queue_temp.pop();
+      }
+    }
+  }
+}
+
+bool Router::match( uint32_t ip_address, uint32_t route_prefix, uint8_t prefix_length )
+{
+  //判断两个IP地址是否前缀匹配
+  uint32_t mask = UINT32_MAX;
+  mask <<= (32 - prefix_length);
+  bool equal = (mask & ip_address) == route_prefix;
+  return equal;
 }
