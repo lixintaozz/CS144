@@ -42,6 +42,7 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
   }else   //否则发送ARP请求报文，记录ARP请求报文的发送时间，并将需要发送的数据报放入队列中
   {
     //当针对同一个IP地址的ARP请求数据报发送超过5秒后，才能继续发送
+    //这里的逻辑还有问题？？？ARP请求报文的发送还有问题
     if ((ip_to_send_.find(next_hop.ipv4_numeric()) != ip_to_send_.end() &&
            time_ - ip_to_send_[next_hop.ipv4_numeric()].init_time > 5000)
          || ip_to_send_.find(next_hop.ipv4_numeric()) == ip_to_send_.end()) {
@@ -49,9 +50,9 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
                  next_hop.ipv4_numeric(),
                  0,
                  ETHERNET_BROADCAST ); // 这里ethernet_response和ip_response的值可以任意设置
-      ip_to_send_[next_hop.ipv4_numeric()].ip_queue.push( dgram );
       ip_to_send_[next_hop.ipv4_numeric()].init_time = time_;
     }
+    ip_to_send_[next_hop.ipv4_numeric()].ip_queue.push( dgram );
   }
 }
 
@@ -114,8 +115,10 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
   //遍历ip_to_send_检查是否需要重新发送ARP请求报文
   for (auto iter = ip_to_send_.begin(); iter != ip_to_send_.end();++ iter)
   {
-    if (ip_to_send_.find(iter -> first) != ip_to_send_.end() && time_ - iter -> second.init_time > 5000)
-      send_arp_( true,iter -> first, 0, ETHERNET_BROADCAST);
+    if (ip_to_send_.find(iter -> first) != ip_to_send_.end() && time_ - iter -> second.init_time > 5000) {
+      send_arp_( true, iter->first, 0, ETHERNET_BROADCAST );
+      iter -> second.init_time = time_;
+    }
   }
 }
 
