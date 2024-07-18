@@ -110,7 +110,7 @@ private:
   }
 
   template<class T2>
-  void parse( T2& datagram, std::vector<std::string>& payload )
+  void parse( T2& datagram, const std::vector<std::string>& payload )
   {
     //用于从以太帧的payload格式恢复为数据报
     Parser parser{payload};

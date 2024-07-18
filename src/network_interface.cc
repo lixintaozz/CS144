@@ -51,15 +51,64 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 //! \param[in] frame the incoming Ethernet frame
 void NetworkInterface::recv_frame( const EthernetFrame& frame )
 {
-  // Your code here.
-  (void)frame;
+  //如果收到的帧既不是广播帧也不是发往该接口的帧，直接返回
+  if (frame.header.dst != ETHERNET_BROADCAST || frame.header.dst != ethernet_address_)
+    return;
+
+  if (frame.header.type == EthernetHeader::TYPE_IPv4)   //如果收到的是IP数据报
+  {
+    InternetDatagram internetDatagram;
+    parse<InternetDatagram>(internetDatagram, frame.payload);
+    datagrams_received_.push(internetDatagram);
+  }else    //如果收到的是ARP数据报
+  {
+    ARPMessage arpMessage;
+    parse<ARPMessage>(arpMessage, frame.payload);
+    ip_ethernet_map_[arpMessage.sender_ip_address].ethernet_address = arpMessage.sender_ethernet_address;
+    ip_ethernet_map_[arpMessage.sender_ip_address].init_time = time_;
+
+    if (arpMessage.opcode == ARPMessage::OPCODE_REQUEST
+         && arpMessage.target_ip_address == ip_address_.ipv4_numeric())   //如果收到的是ARP请求数据报
+    {
+      send_arp_( false, 0, ip_address_.ipv4_numeric(),ethernet_address_);
+    }else
+    {
+      //将等待该响应报文的IP数据报全部发送出去
+      auto send_queue = ip_to_send_[arpMessage.sender_ip_address].ip_queue;
+      while (!send_queue.empty())
+      {
+        send_datagram(send_queue.front(), Address::from_ipv4_numeric(arpMessage.sender_ip_address));
+      }
+      ip_to_send_.erase(arpMessage.sender_ip_address);
+    }
+  }
+
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
-  // Your code here.
-  (void)ms_since_last_tick;
+  //更新时钟的值
+  time_ += ms_since_last_tick;
+
+  //遍历ip_ethernet_map_删除过期表项
+  for (auto iter = ip_ethernet_map_.begin(); iter != ip_ethernet_map_.end(); )
+  {
+    if (time_ - iter -> second.init_time > 30000)
+    {
+      iter = ip_ethernet_map_.erase(iter);
+    }else
+    {
+      ++ iter;
+    }
+  }
+
+  //遍历ip_to_send_检查是否需要重新发送ARP请求报文
+  for (auto iter = ip_to_send_.begin(); iter != ip_to_send_.end();++ iter)
+  {
+    if (ip_to_send_.find(iter -> first) != ip_to_send_.end() && time_ - iter -> second.init_time > 5000)
+      send_arp_( true,iter -> first, 0, ETHERNET_BROADCAST);
+  }
 }
 
 void NetworkInterface::send_arp_( bool is_request, uint32_t ip_required,
@@ -79,7 +128,7 @@ void NetworkInterface::send_arp_( bool is_request, uint32_t ip_required,
   if (is_request)
   {
     ethernetFrame.header.dst = ETHERNET_BROADCAST;
-    arpMessage.opcode = 1;  //设置为1表示这是ARP请求报文
+    arpMessage.opcode = ARPMessage::OPCODE_REQUEST;
     arpMessage.target_ip_address = ip_required;
     std::vector<std::string> payload;
     serialize<ARPMessage>(arpMessage, payload);
@@ -87,7 +136,7 @@ void NetworkInterface::send_arp_( bool is_request, uint32_t ip_required,
   } else
   {
     ethernetFrame.header.dst = ethernet_response;
-    arpMessage.opcode = 0;  //设置为0表示这是ARP响应报文
+    arpMessage.opcode = ARPMessage::OPCODE_REPLY;
     arpMessage.target_ip_address = ip_response;
     arpMessage.target_ethernet_address = ethernet_response;
     std::vector<std::string> payload;
