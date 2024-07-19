@@ -42,16 +42,21 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
   }else   //否则发送ARP请求报文，记录ARP请求报文的发送时间，并将需要发送的数据报放入队列中
   {
     //当针对同一个IP地址的ARP请求数据报发送超过5秒后，才能继续发送
+    bool pushed = false;
     if ((ip_to_send_.find(next_hop.ipv4_numeric()) != ip_to_send_.end() &&
            time_ - ip_to_send_[next_hop.ipv4_numeric()].init_time > 5000)
          || ip_to_send_.find(next_hop.ipv4_numeric()) == ip_to_send_.end()) {
+      pushed = true;
+      ip_to_send_[next_hop.ipv4_numeric()].ip_queue.push( dgram );
+      ip_to_send_[next_hop.ipv4_numeric()].init_time = time_;
       send_arp_( true,
                  next_hop.ipv4_numeric(),
                  0,
                  ETHERNET_BROADCAST ); // 这里ethernet_response和ip_response的值可以任意设置
-      ip_to_send_[next_hop.ipv4_numeric()].init_time = time_;
     }
-    ip_to_send_[next_hop.ipv4_numeric()].ip_queue.push( dgram );
+
+    if (!pushed)
+      ip_to_send_[next_hop.ipv4_numeric()].ip_queue.push( dgram );
   }
 }
 
@@ -81,7 +86,7 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
     }else
     {
       //将等待该响应报文的IP数据报全部发送出去
-      auto send_queue = ip_to_send_[arpMessage.sender_ip_address].ip_queue;
+      auto& send_queue = ip_to_send_[arpMessage.sender_ip_address].ip_queue;
       while (!send_queue.empty())
       {
         send_datagram(send_queue.front(), Address::from_ipv4_numeric(arpMessage.sender_ip_address));
