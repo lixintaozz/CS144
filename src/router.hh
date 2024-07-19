@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <optional>
-#include <map>
+#include <unordered_map>
 
 #include "exception.hh"
 #include "network_interface.hh"
@@ -43,6 +43,6 @@ public:
 private:
   // The router's collection of network interfaces
   std::vector<std::shared_ptr<NetworkInterface>> _interfaces {};
-  std::map<uint32_t , router_item> router_map_ {};   //路由转发表
+  std::unordered_map<uint32_t , router_item> router_map_ {};   //路由转发表
   bool match(uint32_t ip_address, uint32_t route_prefix, uint8_t prefix_length);   //判断两个IP地址是否前缀匹配
 };
