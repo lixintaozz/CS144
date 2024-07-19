@@ -78,8 +78,8 @@ void Router::route()
 bool Router::match( uint32_t ip_address, uint32_t route_prefix, uint8_t prefix_length )
 {
   //判断两个IP地址是否前缀匹配
-  uint32_t mask = UINT32_MAX;
-  mask <<= (32 - prefix_length);
-  bool equal = (mask & ip_address) == route_prefix;
-  return equal;
+  if (prefix_length > 32)
+    return false;
+  uint32_t mask = prefix_length == 0 ? 0 : (UINT32_MAX << (32 - prefix_length));
+  return (mask & ip_address) == route_prefix;;
 }
