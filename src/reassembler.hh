@@ -32,7 +32,7 @@ public:
    */
   void insert( uint64_t first_index, std::string data, bool is_last_substring );
 
-  // How many bytes are stored in the Reassembler itself?
+  // 此时落在滑动窗口内部的字节数量（包含未按序到达的string，且它们之间可能存在重叠）
   uint64_t bytes_pending() const;
 
   // Access output stream reader
@@ -43,7 +43,7 @@ public:
   const Writer& writer() const { return output_.writer(); }
 
 private:
-  ByteStream output_; // the Reassembler writes to this ByteStream
-  std::map<uint64_t, std::string> buffer{};    //the buffer used to store strings arrived unordered
+  ByteStream output_; // 即滑动窗口，它只能存储序号在一定范围内的字节流
+  std::map<uint64_t, std::string> buffer{};    //存储落在滑动窗口内部，但未按序到达的string
   bool is_last = false;  //the flag indicates whether the data is the last string
 };
