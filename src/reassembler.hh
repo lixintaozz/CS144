@@ -43,7 +43,7 @@ public:
   const Writer& writer() const { return output_.writer(); }
 
 private:
-  ByteStream output_; // 即滑动窗口，它只能存储序号在一定范围内的字节流
+  ByteStream output_; // 即滑动窗口，它只能存储序号在一定范围内的字节流 (ByteStream存在一个reader和writer分别用于向窗口中读写数据)
   std::map<uint64_t, std::string> buffer{};    //存储落在滑动窗口内部，但未按序到达的string
   bool is_last = false;  //the flag indicates whether the data is the last string
 };
